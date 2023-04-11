@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>University of Oregon Mapping</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js"></script>
+    <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css" rel="stylesheet" />
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+      #title {
+        z-index: 9999;
+        background-color: white;
+        opacity: 0.8;
+        text-align: center;
+        position: absolute;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 15px;
+        color: darkblue;
+        border-radius: 5px;
+    </style>
+  </head>
+
+  <body>
+    <div id="map"></div>
+    <div id="title">
+      <h1>Map of Portland</h1>
+      <h2>By: Sam Fassberg</h2>
+    </div>
+
+
+    <script>
+      mapboxgl.accessToken = "pk.eyJ1Ijoic2Zhc3NiZXJnIiwiYSI6ImNsZzVlOHNhaDAwYXEzc29ka2VpMmh3cXMifQ.S6OurZ6z7jh6BGc7YDv8NQ";
+
+      var map = new mapboxgl.Map({
+        container: "map",
+        style: "mapbox://styles/mapbox/dark-v11",
+        center: [-122.6788, 45.5212],
+        zoom: 13,
+      });
+
+      var popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+        "Hello World. Welcome to Portland!"
+      ); 
+      var marker = new mapboxgl.Marker({color:'green'})
+        .setLngLat([-122.6788, 45.5212])
+        .setPopup(popup)
+        .addTo(map);
+   
+      var psuPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+        '<h3>Portland State University</h3><p><a href="https://www.pdx.edu/" target="_blank">Visit PSU Homepage</a></p>'
+      );
+
+      var psuMarker = new mapboxgl.Marker({color:'darkblue'})
+        .setLngLat([-122.6843, 45.5118])
+        .setPopup(psuPopup)
+        .addTo(map);
+    </script>
+  </body>
+</html>
