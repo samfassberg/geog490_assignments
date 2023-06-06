@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>US Starbucks</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css' rel='stylesheet' />
+    <link href='https://fonts.googleapis.com/css2?family=Geologica:wght@300&display=swap' rel='stylesheet'>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #map { position: absolute; top: 75px; bottom: 0; width: 100%; }
+        #title { position: absolute; top: 0; left: 0; width: 100%; background-color: #4caf50; color: #fff; padding: 20px; text-align: center; font-size: 32px; font-weight: 300; font-family: 'Geologica', sans-serif; }
+        #description-container { position: absolute; top: 75px; right: 10px; width: 250px; background-color: #fff; padding: 10px; font-size: 14px; z-index: 1; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); border-radius: 3px; }
+        #description-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        #description-title { margin: 0; }
+        #close-description { cursor: pointer; }
+        #resetButton { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); }
+        .info-panel-container {
+            position: absolute;
+            left: 10px;
+            top: 75px;
+            display: flex;
+            align-items: center;
+        }
+        #info-panel {
+            width: 300px;
+            height: auto;
+            background-color: #fff;
+            overflow-y: scroll;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id='overlay'>
+        <p>Zoom in to see cities and store locations</p>
+    </div>    
+    <div id='title'>Starbucks Stores in the US</div>
+    <div id='map'></div>
+    <div id='description-container'>
+        <div id="description-header">
+            <h3 id="description-title">About This Map</h3>
+            <span id="close-description">&times;</span>
+        </div>
+        <p>This interactive map displays Starbucks stores across the US. Click on states, cities, or store points for more info. Zoom in to see cities and individual store locations.</p>
+    </div>
+
+    <div class="info-panel-container">
+        <div id="info-panel"></div>
+    </div>
+
+    <button id='resetButton'>Reset Map View</button>
+
+    <script>
+        //event listener to close the map info box
+        document.getElementById('close-description').addEventListener('click', function () {
+            document.getElementById('description-container').style.display = 'none';
+        });
+        mapboxgl.accessToken = 'pk.eyJ1Ijoic2Zhc3NiZXJnIiwiYSI6ImNsZzVlOHNhaDAwYXEzc29ka2VpMmh3cXMifQ.S6OurZ6z7jh6BGc7YDv8NQ';
+    
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v10',
+            center: [-99.71, 39.5],
+            zoom: 1,
+            maxZoom: 15,   // set max zoom
+            minZoom: 0,    // set min zoom
+            maxBounds: [  // set max bounds
+                [-135.276413, 20.27092], // Southwest coordinates
+                [-57.534570, 53.684358]  // Northeast coordinates
+            ]
+        });
+        
+        // disable right click and touch rotatation on map
+        map.dragRotate.disable();
+        map.touchZoomRotate.disableRotation();
+
+        // creeat panel to store info user is hovering over
+        var infoPanel = document.getElementById('info-panel');
+
+        // better icons for zoom controls
+        var plusIcon = document.createElement('span');
+        plusIcon.className = 'mapboxgl-ctrl-icon mapboxgl-ctrl-zoom-in';
+        var minusIcon = document.createElement('span');
+        minusIcon.className = 'mapboxgl-ctrl-icon mapboxgl-ctrl-zoom-out';
+
+        // zoom controls
+        var nav = new mapboxgl.NavigationControl({
+            showCompass: false,
+            zoomInButton: plusIcon,
+            zoomOutButton: minusIcon
+            });
+        map.addControl(nav, 'bottom-left');
+
+        map.on('load', function () {
+            map.addSource('state', {
+                type: 'vector',
+                url: 'mapbox://sfassberg.368i86t4'
+            });
+            map.addSource('city', {
+                type: 'vector',
+                url: 'mapbox://sfassberg.8opre567'
+            });
+            map.addSource('point', {
+                type: 'vector',
+                url: 'mapbox://sfassberg.9y8m3gs8'
+            });
+
+            map.addLayer({
+                'id': 'state',
+                'type': 'fill',
+                'source': 'state',
+                'source-layer': 'cb_2018_us_sta_FeaturesToJSO-5lto8o', 
+                'paint': {
+                    'fill-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'Number_of'],
+                        0, '#F7FCF5',
+                        50, '#C8E6C9',
+                        150, '#81C784',
+                        260, '#31A354',
+                        1000, '#198840',
+                        3000, '#006D2C'
+                    ],
+                    'fill-opacity': 0.65
+                    
+                }
+            });
+            map.addLayer({
+                'id': 'city',
+                'type': 'fill',
+                'source': 'city',
+                'source-layer': 'cb_2018_us_cbs_FeaturesToJSO1-41uhad', 
+                'paint': {
+                    'fill-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'Count'],
+                        0, '#F7FCF5',
+                        1, '#C8E6C9',
+                        2, '#81C784',
+                        5, '#31A354',
+                        25, '#198840',
+                        50, '#006D2C',
+                        156, '#00441b'
+                    ],
+                    'fill-opacity': 0.5
+                }
+            });
+            map.addLayer({
+                'id': 'point',
+                'type': 'circle',
+                'source': 'point',
+                'source-layer': 'us_stores-27472c', 
+                'paint': {
+                    'circle-radius': 10,
+                    'circle-color': '#A31918'
+                }
+            });
+
+           // Popup for states
+           map.on('click', 'state', function (e) {
+                var coordinates = e.lngLat;
+                var stateName = e.features[0].properties.NAME;
+                var starbucksCount = e.features[0].properties.Number_of;
+                
+
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML('<h3>' + stateName + '</h3><p>Starbucks Count: ' + starbucksCount + '</p>')
+                    .addTo(map);
+                
+                map.flyTo({
+                    center: coordinates,
+                    zoom: 6,
+                    speed: 0.5,
+                    essential: true 
+                });
+            });
+
+
+
+            // Popup for cities
+            map.on('click', 'city', function (e) {
+                var coordinates = e.lngLat;
+                var cityName = e.features[0].properties.cityname;
+                var starbucksCount = e.features[0].properties.Count;
+
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML('<h3>' + cityName + '</h3><p>Store Count: ' + starbucksCount + '</p>')
+                    .addTo(map);
+
+                map.flyTo({
+                    center: coordinates,
+                    zoom: 8.5,
+                    speed: 0.5,
+                    essential: true 
+                });
+            });
+            // Popup for points
+            map.on('click', 'point', function (e) {
+                var coordinates = e.lngLat;
+                var storeName = e.features[0].properties['Store Name'];
+                var streetAddress = e.features[0].properties['Street Address'];
+                var city = e.features[0].properties['City'];
+                var state = e.features[0].properties['State/Province'];
+
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML('<p>Store Name: ' + storeName + '</p>' +
+                        '<p>Street Address: ' + streetAddress + '</p>' +
+                        '<p>City: ' + city + '</p>' +
+                        '<p>State/Province: ' + state + '</p>')
+                    .addTo(map);
+            });
+
+
+
+            // Change the cursor to a pointer when over a state, city or point layer.
+            map.on('mouseenter', 'state', function () {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseenter', 'city', function () {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseenter', 'point', function () {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            // Change it back to a move cursor when it leaves.
+            map.on('mouseleave', 'state', function () {
+                map.getCanvas().style.cursor = '';
+            });
+            map.on('mouseleave', 'city', function () {
+                map.getCanvas().style.cursor = '';
+            });
+            map.on('mouseleave', 'point', function () {
+                map.getCanvas().style.cursor = '';
+            });
+
+            // Only show certain layers at certain zoom levels
+            map.setLayerZoomRange('state', 0, 7);
+            map.setLayerZoomRange('city', 7, 10);
+            map.setLayerZoomRange('point', 9, 15);
+
+            // Remove labels from all land that isn't part of the United States
+            map.getStyle().layers.forEach(function (thisLayer) {
+                if (thisLayer.type === 'symbol' && thisLayer.layout['text-field']) {
+                    map.setLayoutProperty(thisLayer.id, 'visibility', 'none');
+                }
+            });
+            
+            // event listener that updates the the info panel where the mouse is hovering
+            map.on('mousemove', function (e) {
+                var states = map.queryRenderedFeatures(e.point, { layers: ['state'] });
+                var cities = map.queryRenderedFeatures(e.point, { layers: ['city'] });
+                var points = map.queryRenderedFeatures(e.point, { layers: ['point'] });
+
+                if (states.length > 0) {
+                    var stateName = states[0].properties.NAME;
+                    var starbucksCount = states[0].properties.Number_of;
+                    infoPanel.innerHTML = '<h3>' + stateName + '</h3><p>Starbucks Count: ' + starbucksCount + '</p>';
+                } else if (cities.length > 0) {
+                    var cityName = cities[0].properties.cityname;
+                    var starbucksCount = cities[0].properties.Count;
+                    infoPanel.innerHTML = '<h3>' + cityName + '</h3><p>Store Count: ' + starbucksCount + '</p>';
+                } else if (points.length > 0) {
+                    var storeName = points[0].properties['Store Name'];
+                    var streetAddress = points[0].properties['Street Address'];
+                    var city = points[0].properties['City'];
+                    var state = points[0].properties['State/Province'];
+                    infoPanel.innerHTML = '<p>Store Name: ' + storeName + '</p>' +
+                        '<p>Street Address: ' + streetAddress + '</p>' +
+                        '<p>City: ' + city + '</p>' +
+                        '<p>State/Province: ' + state + '</p>';
+                } else {
+                    infoPanel.innerHTML = '';
+                }
+            });
+            // event listener that  
+            var resetButton = document.getElementById('resetButton');
+            resetButton.addEventListener('click', function () {
+                map.jumpTo({
+                    center: [-99.71, 38.5],
+                    zoom: 1,
+                    speed: 0.8
+                });
+            });  
+        });
+    </script>
+</body>
+</html>
