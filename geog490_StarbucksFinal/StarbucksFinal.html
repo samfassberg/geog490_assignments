@@ -3,7 +3,9 @@
 <head>
     <meta charset='utf-8' />
     <title>US Starbucks</title>
+    <!-- scale page to the devices width -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- mapbox GL library -->
     <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js'></script>
     <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css' rel='stylesheet' />
     <!-- link to google fonts  -->
@@ -66,7 +68,7 @@
         });
         mapboxgl.accessToken = 'pk.eyJ1Ijoic2Zhc3NiZXJnIiwiYSI6ImNsZzVkOXkxMzAyZWwzcW5kYXFleHllbDIifQ.-Zna7UOd0YMpkwR4T8CuWg';
         
-        //create legend function
+        //function to create legend
         function createLegend(type) {
             var legendContent = '<h4>Starbucks Count</h4>';
             var colors = [];
