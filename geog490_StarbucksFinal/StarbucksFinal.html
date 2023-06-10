@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>US Starbucks</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css' rel='stylesheet' />
+    <!-- link to google fonts  -->
+    <link href='https://fonts.googleapis.com/css2?family=Geologica:wght@300&display=swap' rel='stylesheet'>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #map { position: absolute; top: 75px; bottom: 0; width: 100%; }
+        #title { position: absolute; top: 0; left: 0; width: 100%; background-color: #4caf50; color: #fff; padding: 20px; text-align: center; font-size: 32px; font-weight: 300; font-family: 'Geologica', sans-serif; }
+        #description-container { position: absolute; top: 75px; right: 10px; width: 250px; background-color: #fff; padding: 10px; font-size: 14px; z-index: 1; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); border-radius: 3px; }
+        #description-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        #description-title { margin: 0; }
+        #close-description { cursor: pointer; }
+        #resetButton { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); }
+        .info-panel-container {
+            position: absolute;
+            left: 10px;
+            top: 75px;
+            display: flex;
+            align-items: center;
+        }
+        #info-panel {
+            width: 300px;
+            height: auto;
+            background-color: #fff;
+            overflow-y: scroll;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id='overlay'>
+        <p>Zoom in to see cities and store locations</p>
+    </div>    
+    
+    <div id='title'>Starbucks Stores in the US</div>
+    
+    <div id='map'></div>
+    
+    <div id="legend" style="position: absolute; bottom: 10px; right: 10px; background-color: rgba(255, 255, 255, 0.8); padding: 10px; border-radius: 3px; font-size: 12px;"></div>
+    
+    <div id='description-container'>
+        <div id="description-header">
+            <h3 id="description-title">About This Map</h3>
+            <span id="close-description">&times;</span>
+        </div>
+        <p>This interactive map displays <b>Starbucks stores</b> across the <b>US</b>. Click on <b>states</b>, <b>counties</b>, or <b>store points</b> for more info. <b>Zoom in</b> to see <b>cities</b> and individual <b>store locations</b>.</p>
+        <p style="font-size:0.8em;">Credit: lautsunwing on Kaggle for Starbucks data, US Census for state and county shpfiles, Midjourney for original picture used in icon </p>
+    </div>
+
+    <div class="info-panel-container">
+        <div id="info-panel"></div>
+    </div>
+
+    <button id='resetButton'>Reset Map View</button>
+
+    <script>
+        //event listener to close the map info box
+        document.getElementById('close-description').addEventListener('click', function () {
+            document.getElementById('description-container').style.display = 'none';
+        });
+        mapboxgl.accessToken = 'pk.eyJ1Ijoic2Zhc3NiZXJnIiwiYSI6ImNsZzVkOXkxMzAyZWwzcW5kYXFleHllbDIifQ.-Zna7UOd0YMpkwR4T8CuWg';
+        
+        //create legend function
+        function createLegend(type) {
+            var legendContent = '<h4>Starbucks Count</h4>';
+            var colors = [];
+
+            if (type === 'state') {
+                colors = [
+                    { count: 0, color: '#F7FCF5' },
+                    { count: 50, color: '#C8E6C9' },
+                    { count: 150, color: '#81C784' },
+                    { count: 260, color: '#31A354' },
+                    { count: 1000, color: '#198840' },
+                    { count: 3000, color: '#006D2C' }
+                ];
+            } else if (type === 'city') {
+                colors = [
+                    { count: 0, color: '#F7FCF5' },
+                    { count: 1, color: '#C8E6C9' },
+                    { count: 2, color: '#81C784' },
+                    { count: 10, color: '#31A354' },
+                    { count: 50, color: '#198840' },
+                    { count: 100, color: '#006D2C' },
+                    { count: 156, color: '#00441b' }
+                ];
+            }
+
+            colors.forEach(function (item, index) {
+                legendContent += '<div style="display: flex; align-items: center; margin-bottom: 5px;">';
+                legendContent += '<div style="width: 20px; height: 20px; background-color: ' + item.color + ';"></div>';
+                legendContent += '<span style="margin-left: 5px;">' + item.count + (index < colors.length - 1 ? ' - ' + (colors[index + 1].count - 1) : '+') + '</span>';
+                legendContent += '</div>';
+            });
+
+            document.getElementById('legend').innerHTML = legendContent;
+        }
+
+        // create map instance
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v10', 
+            center: [-99.71, 39.5], //center of US
+            zoom: 1,
+            maxZoom: 15,   // set max zoom
+            minZoom: 0,    // set min zoom
+            maxBounds: [  // set max bounds
+                [-135.276413, 20.27092], // Southwest coordinates
+                [-57.534570, 53.684358]  // Northeast coordinates
+            ]
+        });
+        
+        // disable right click and touch rotatation on map
+        map.dragRotate.disable();
+        map.touchZoomRotate.disableRotation();
+
+        // creeat panel to store info user is hovering over
+        var infoPanel = document.getElementById('info-panel');
+
+        // better icons for zoom controls
+        var plusIcon = document.createElement('span');
+        plusIcon.className = 'mapboxgl-ctrl-icon, mapboxgl-ctrl-zoom-in';
+        var minusIcon = document.createElement('span');
+        minusIcon.className = 'mapboxgl-ctrl-icon, mapboxgl-ctrl-zoom-out';
+
+        // zoom controls
+        var nav = new mapboxgl.NavigationControl({
+            showCompass: false,
+            zoomInButton: plusIcon,
+            zoomOutButton: minusIcon
+            });
+        map.addControl(nav, 'bottom-left');
+
+        //laoad vector tilesets for state, city, and stores  
+        map.on('load', function () {
+
+            //load store icon
+            map.loadImage('https://i.ibb.co/ZgBjKWV/Layer-2.png', function (error, image) {
+                if (error) throw error;
+                map.addImage('my-icon', image);
+            });
+
+
+            //add tileset sources for state, city, and store data
+            map.addSource('state', {
+                type: 'vector',
+                url: 'mapbox://sfassberg.368i86t4'
+            });
+            map.addSource('city', {
+                type: 'vector',
+                url: 'mapbox://sfassberg.6wkuobr2'
+            });
+            map.addSource('point', {
+                type: 'vector',
+                url: 'mapbox://sfassberg.9y8m3gs8'
+            });
+
+
+            //add state, city, and store layers
+            map.addLayer({
+                'id': 'state',
+                'type': 'fill',
+                'source': 'state',
+                'source-layer': 'cb_2018_us_sta_FeaturesToJSO-5lto8o', 
+                'paint': {
+                    'fill-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'Number_of'],
+                        0, '#F7FCF5',
+                        50, '#C8E6C9',
+                        150, '#81C784', 
+                        260, '#31A354',
+                        1000, '#198840',
+                        3000, '#006D2C'
+                    ],
+                    'fill-opacity': 0.65
+                    
+                }
+            });
+            map.addLayer({
+                'id': 'city',
+                'type': 'fill',
+                'source': 'city',
+                'source-layer': 'countystarbucks_geojson-44ngw6', 
+                'paint': {
+                    'fill-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'store_count'],
+                        0, '#F7FCF5',
+                        1, '#C8E6C9',
+                        2, '#81C784',
+                        10, '#31A354',
+                        50, '#198840',
+                        100, '#006D2C',
+                        156, '#00441b'
+                    ],
+                    'fill-opacity': 0.5
+                }
+            });
+            map.addLayer({
+                'id': 'point',
+                'type': 'symbol',
+                'source': 'point',
+                'source-layer': 'us_stores-27472c', 
+                'layout': {
+                    'icon-image': 'my-icon',
+                    'icon-size': 1
+                }
+            });
+
+           // popup for states
+           map.on('click', 'state', function (e) {
+                var coordinates = e.lngLat;
+                var stateName = e.features[0].properties.NAME;
+                var starbucksCount = e.features[0].properties.Number_of;
+                
+                //create popup with name and store count for states
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML('<h3>' + stateName + '</h3><p>Starbucks Count: ' + starbucksCount + '</p>')
+                    .addTo(map);
+                
+                // zoom to state
+                map.flyTo({
+                    center: coordinates,
+                    zoom: 6,
+                    speed: 0.5,
+                    essential: true 
+                });
+            });
+
+
+
+            // Popup for cities
+            map.on('click', 'city', function (e) {
+                var coordinates = e.lngLat;
+                var cityName = e.features[0].properties.NAMELSAD;
+                var starbucksCount = e.features[0].properties.store_count;
+
+                //create popup with name and store count for cities
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML('<h3>' + cityName + '</h3><p>Store Count: ' + starbucksCount + '</p>')
+                    .addTo(map);
+             
+                // zoom to city 
+                map.flyTo({
+                    center: coordinates,
+                    zoom: 9.1,
+                    speed: 0.75,
+                    essential: true 
+                });
+            });
+            // popup for points
+            map.on('click', 'point', function (e) {
+                var coordinates = e.lngLat;
+                var storeName = e.features[0].properties['Store Name'];
+                var streetAddress = e.features[0].properties['Street Address'];
+                var city = e.features[0].properties['City'];
+                var state = e.features[0].properties['State/Province'];
+
+                //create popup with store info
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML('<p>Store Name: ' + storeName + '</p>' +
+                        '<p>Street Address: ' + streetAddress + '</p>' +
+                        '<p>City: ' + city + '</p>' +
+                        '<p>State/Province: ' + state + '</p>')
+                    .addTo(map);
+            });
+
+            //add state boundary lines
+            map.addLayer({
+                'id': 'state-boundaries',
+                'type': 'line',
+                'source': 'state',
+                'source-layer': 'cb_2018_us_sta_FeaturesToJSO-5lto8o',
+                'paint': {
+                    'line-color': '#555555',
+                    'line-width': 2
+                },
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                }
+            });
+
+            // change the cursor to a pointer when over a state, city or point layer.
+            map.on('mouseenter', 'state', function () {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseenter', 'city', function () {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseenter', 'point', function () {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            // change it back to a move cursor when it leaves.
+            map.on('mouseleave', 'state', function () {
+                map.getCanvas().style.cursor = '';
+            });
+            map.on('mouseleave', 'city', function () {
+                map.getCanvas().style.cursor = '';
+            });
+            map.on('mouseleave', 'point', function () {
+                map.getCanvas().style.cursor = '';
+            });
+
+            // only show certain layers at certain zoom levels
+            map.setLayerZoomRange('state', 0, 6);
+            map.setLayerZoomRange('city', 6, 10);
+            map.setLayerZoomRange('point', 9, 15);
+
+            // Only show labels at max zoom out or when zoomed in on points
+            map.on('zoom', function() {
+                if(map.getZoom() < 11 && map.getZoom()>=5) {
+                    map.getStyle().layers.forEach(function (thisLayer) {
+                        if (thisLayer.type === 'symbol' && thisLayer.layout['text-field']) {
+                            map.setLayoutProperty(thisLayer.id, 'visibility', 'none');
+                        }
+                    });
+                } 
+                else {
+                    map.getStyle().layers.forEach(function (thisLayer) {
+                        if (thisLayer.type === 'symbol' && thisLayer.layout['text-field']) {
+                            map.setLayoutProperty(thisLayer.id, 'visibility', 'visible');
+                        }
+                    });
+                }
+            });
+
+            
+            // updates the the info panel where the mouse is hovering by querying when the mouse is over a feature
+            map.on('mousemove', function (e) {
+                var states = map.queryRenderedFeatures(e.point, { layers: ['state'] });
+                var cities = map.queryRenderedFeatures(e.point, { layers: ['city'] });
+                var points = map.queryRenderedFeatures(e.point, { layers: ['point'] });
+
+                if (states.length > 0) {
+                    var stateName = states[0].properties.NAME;
+                    var starbucksCount = states[0].properties.Number_of;
+                    infoPanel.innerHTML = '<h3>' + stateName + '</h3><p>Starbucks Count: ' + starbucksCount + '</p>';
+                } 
+                else if (cities.length > 0) {
+                    var cityName = cities[0].properties.NAMELSAD;
+                    var starbucksCount = cities[0].properties.store_count;
+                    infoPanel.innerHTML = '<h3>' + cityName + '</h3><p>Store Count: ' + starbucksCount + '</p>';
+                } 
+                else if (points.length > 0) {
+                    var storeName = points[0].properties['Store Name'];
+                    infoPanel.innerHTML = '<p>Store Name: ' + storeName + '</p>' +
+                                        '<p>(Cick for more information)</p>';
+                } 
+                else {
+                    infoPanel.innerHTML = '';
+                }
+                });
+
+            // event listener that resets the map to the original view when button pressed
+            var resetButton = document.getElementById('resetButton');
+            resetButton.addEventListener('click', function () {
+                map.jumpTo({
+                    center: [-99.71, 38.5],
+                    zoom: 1,
+                    speed: 0.8
+                });
+            });
+
+            //initalize the legend
+            createLegend('state');
+            
+            // update the legend to show features displayed at current zoom
+            map.on('zoom', function () {
+                var zoomLevel = map.getZoom();
+
+                if (zoomLevel < 6) {
+                    createLegend('state');
+                } else if (zoomLevel >= 6 && zoomLevel < 11) {
+                    createLegend('city');
+                } else {
+                    document.getElementById('legend').innerHTML = '';
+                }
+            });
+            
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="en"><Esri><CreaDate>20230604</CreaDate><CreaTime>20001100</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files\arcgis\pro\Resources\ArcToolbox\toolboxes\Data Management Tools.tbx\JoinField" Date="20230604" Time="200011">JoinField cb_2018_us_state_20m STUSPS stores_by_state.csv State/Province 'Number of Stores' "Select transfer fields" #</Process></lineage></DataProperties></Esri></metadata>
